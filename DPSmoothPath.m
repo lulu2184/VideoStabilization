@@ -1,5 +1,5 @@
-function transH = DPSmoothPath(detX, detY, angle, transH, n_frame)
-    lb = 20;
+function transH = DPSmoothPath(transH, n_frame)
+    lb = 10;
     
     f = zeros(1, n_frame);
     des = zeros(1, n_frame);
@@ -9,7 +9,7 @@ function transH = DPSmoothPath(detX, detY, angle, transH, n_frame)
         disp(i);
         f(i) = 1e100;
         for j = 1: i - lb
-            w = f(j) + calculateWeight(detX, detY, angle, j, i);
+            w = f(j) + calculateWeight(transH, j, i);
             if w < f(i), f(i) = w; des(i) = j; end;
         end;
     end;
@@ -20,31 +20,41 @@ function transH = DPSmoothPath(detX, detY, angle, transH, n_frame)
         old = des(pos);
         if old < 0, break; end;
         new = pos;
-        for j = 0:new - old - 1
-            dx = (detX{new} - detX{old})/(new - old);
-            dy = (detY{new} - detY{old})/(new - old);
-            da = (angle{new} - angle{old})/(new - old);
-            for k = 1:new - old - 1
-                a = k * da;
-                uMat = [cos(a), -sin(a), 0; sin(a), cos(a), 0; dx * k, dy * k, 1];
-                T = uMat * transH{old};
-                transH{old + k} = T;
-            end;
+        transH{old} = eye(3);
+        uMat = eye(3);
+        for j = 1:new - old, uMat = transH{j + old} * uMat; end;
+        uMat = uMat^(-1/(new - old));
+        for j = 1:new - old
+           transH{j + old} = transH{j + old} * transH{j + old - 1};
+        end;
+        Mat = eye(3);
+        for j = 1: new - old
+            Mat = Mat * uMat;
+            transH{j + old} = Mat * transH{j + old};
         end;
         pos = old;
     end;
 
-function value = calculateWeight(detX, detY, angle, old, new)
-    dx = (detX{new} - detX{old})/(new - old);
-    dy = (detY{new} - detY{old})/(new - old);
-    da = (angle{new} - angle{old})/(new - old);
+function value = calculateWeight(transH, old, new)
+    uMat = eye(3);
+    for k = 1 : new - old
+        uMat = transH{k + old} * uMat;
+    end;
+    uMat = uMat^(1/(new - old));
+    uMat = real(uMat);
+    Mat = eye(1);
     value = 0;
-    for k = 0 : new - old - 1
-        a = k * da;
-        value = value + calculation(dx * k + detX{old} - detX{k + old}, ...
-            dy * k + detY{old} - detY{k + old}, a + angle{old} - angle{k + old});
+    for k = 1 : new - old - 1
+        transH{k + old} = transH{k + old} * transH{k + old - 1};
+        Mat = Mat * uMat;
+        dx = transH{k + old}(3, 1) - Mat(3, 1);
+        dy = transH{k + old}(3, 2) - Mat(3, 2);
+        da = atan2(transH{k + old}(2, 1), transH{k + old}(1, 1));
+        da = da - atan2(Mat(2, 1), Mat(1, 1));
+        value = value + calculation(dx, dy, da);
     end;
     value = value / (new - old + 1)^2;
 
 function value = calculation(dx, dy, da)
-    value = dx^2 + dy^2 + (da * 5);
+    if da > pi, da = pi * 2 - da; end;
+    value = dx^2 + dy^2 + (da^2 * 5);
