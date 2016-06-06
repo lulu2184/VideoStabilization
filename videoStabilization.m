@@ -14,7 +14,7 @@ Hcumulative = eye(3);
 open(outVideo);
 i = 1;
 
-residue_scale = 0.1;
+residue_scale = 0;
 [m, n, tn] = size(imgB);
 startm = round(m * residue_scale);
 endm = m - round(m * residue_scale);
@@ -44,16 +44,16 @@ end;
 
 [final_transH, keyframe] = DPSmoothPath(transH, n_frame);
 
-T_axis = 1:n_frame;
-figure;
-plot(T_axis, detY(1:n_frame), keyframe, detY(keyframe))
-xlabel('frame')
-ylabel('Motion in y')
-
-figure;
-plot(T_axis, detA(1:n_frame), keyframe, detA(keyframe))
-xlabel('frame')
-ylabel('Motion in rotation')
+% T_axis = 1:n_frame;
+% figure;
+% plot(T_axis, detY(1:n_frame), keyframe, detY(keyframe))
+% xlabel('frame')
+% ylabel('Motion in y')
+% 
+% figure;
+% plot(T_axis, detA(1:n_frame), keyframe, detA(keyframe))
+% xlabel('frame')
+% ylabel('Motion in rotation')
 
 
 window_size = 30;
@@ -69,7 +69,7 @@ for i = 1:n_frame
     left = max(1, i - window_size / 2);
     right = min(n_frame, i + window_size / 2);
     out = padding(out, final_transH{i}, i - left + 1, transH(left:right), img_array(left:right));
-    out = padarray([out(startm:endm, startn:endn, :)], [startm, startn]);
+%     out = padarray([out(startm:endm, startn:endn, :)], [startm, startn]);
     out = insertText(out, [1 1], [i]);
     out = out(1:m, 1:n, :);
     

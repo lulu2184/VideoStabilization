@@ -18,7 +18,7 @@ function img = padding(img, img_trans, index, transH, array_img)
     
     for i = 1:size(img, 1)
         for j = 1:size(img, 2)
-            if rgb2gray(img(i, j, :)) < 0.05, img(i,j,:) = complement(i, j, :);
+            if rgb2gray(img(i, j, :)) < 0.05, img(i,j,:) = complement(i, j, :); end;
         end;
     end;
     img = single(img);
