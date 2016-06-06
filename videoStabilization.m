@@ -25,6 +25,9 @@ transH = {eye(3)};
 img_array = {imgB};
 detY = zeros(390);
 detA = zeros(390);
+detX = zeros(390);
+
+bias = 0.01 * ones(m,n,3);
 
 while ~isDone(videoReader)
     n_frame = n_frame + 1;
@@ -34,36 +37,43 @@ while ~isDone(videoReader)
     imgB = step(videoReader);
     H = stabilizationTform(rgb2gray(imgA), rgb2gray(imgB));
     H = cvexTformToSRT(H);
-    img_array{n_frame} = imgB;
-    Hcumulative = H * Hcumulative;
+    img_array{n_frame} = imgB + bias;
+    Hcumulative = Hcumulative * H;
     transH{n_frame} = H;
     detY(n_frame) = Hcumulative(3, 2);
+    detX(n_frame) = Hcumulative(3, 1);
     detA(n_frame) = atan2(Hcumulative(2,1), Hcumulative(1,1));
 %     outB = imwarp(imgB, affine2d(Hcumulative),'OutputView',imref2d(size(imgB)));      
 end;
 
 [final_transH, keyframe] = DPSmoothPath(transH, n_frame);
 
-% T_axis = 1:n_frame;
-% figure;
-% plot(T_axis, detY(1:n_frame), keyframe, detY(keyframe))
-% xlabel('frame')
-% ylabel('Motion in y')
-% 
-% figure;
-% plot(T_axis, detA(1:n_frame), keyframe, detA(keyframe))
-% xlabel('frame')
-% ylabel('Motion in rotation')
+T_axis = 1:n_frame;
+figure;
+plot(T_axis, detY(1:n_frame), keyframe, detY(keyframe));
+xlabel('frame');
+ylabel('Motion in y');
+  
+figure;
+plot(T_axis, detA(1:n_frame), keyframe, detA(keyframe));
+xlabel('frame');
+ylabel('Motion in rotation');
+
+figure;
+plot(T_axis, detX(1:n_frame), keyframe, detX(keyframe));
+xlabel('frame');
+ylabel('Motion in x');
 
 
 window_size = 30;
     
 reset(videoReader);
+
 for i = 1:n_frame
     disp(i);
 %     disp(transH{i});
     img = step(videoReader);
-    out = imwarp(img, affine2d(final_transH{i}),'OutputView',imref2d(size(img)));
+    out = imwarp(img + bias, affine2d(final_transH{i}),'OutputView',imref2d(size(img)));
     origin_out = out;
 
     left = max(1, i - window_size / 2);
@@ -71,9 +81,10 @@ for i = 1:n_frame
     out = padding(out, final_transH{i}, i - left + 1, transH(left:right), img_array(left:right));
 %     out = padarray([out(startm:endm, startn:endn, :)], [startm, startn]);
     out = insertText(out, [1 1], [i]);
-    out = out(1:m, 1:n, :);
+    out = out - bias;
+    out = min(max(out(1:m, 1:n, :), 0), 1);
     
-    writeVideo(outVideo, [origin_out, out]);
+    writeVideo(outVideo, [img, out]);
 end;
         
 close(outVideo);
