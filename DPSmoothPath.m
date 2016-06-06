@@ -1,4 +1,4 @@
-function transH = DPSmoothPath(transH, n_frame)
+function [transH, keyframe] = DPSmoothPath(transH, n_frame)
     lb = 10;
     
     f = zeros(1, n_frame);
@@ -14,10 +14,14 @@ function transH = DPSmoothPath(transH, n_frame)
         end;
     end;
     
+    keyframe = zeros(n_frame);
+    count = 0;
     pos = n_frame;
     while pos > 0
         disp(pos);
         old = des(pos);
+        count = count + 1;
+        keyframe(count) = pos;
         if old < 0, break; end;
         new = pos;
         transH{old} = eye(3);
@@ -34,6 +38,7 @@ function transH = DPSmoothPath(transH, n_frame)
         end;
         pos = old;
     end;
+    keyframe = sort(keyframe(1:count));
 
 function value = calculateWeight(transH, old, new)
     uMat = eye(3);
@@ -57,4 +62,4 @@ function value = calculateWeight(transH, old, new)
 
 function value = calculation(dx, dy, da)
     if da > pi, da = pi * 2 - da; end;
-    value = dx^2 + dy^2 + (da^2 * 5);
+    value = dx^2 + dy^2 + (da^2 * 10);

@@ -22,13 +22,11 @@ startn = round(n * residue_scale);
 endn = n - round(n * residue_scale);
 n_frame = 1;
 transH = {eye(3)};
-detX = {0};
-detY = {0};
-angle = {0};
 img_array = {imgB};
+detY = zeros(390);
+detA = zeros(390);
 
-
-while ~isDone(videoReader) && n_frame < 20
+while ~isDone(videoReader)
     n_frame = n_frame + 1;
     disp(n_frame);
     outA = outB;
@@ -38,14 +36,26 @@ while ~isDone(videoReader) && n_frame < 20
     H = cvexTformToSRT(H);
     img_array{n_frame} = imgB;
     Hcumulative = H * Hcumulative;
-    detX{n_frame} = H(3,1);
-    detY{n_frame} = H(3,2);
-    angle{n_frame} = atan2(H(2,1), H(1,1));
     transH{n_frame} = H;
+    detY(n_frame) = Hcumulative(3, 2);
+    detA(n_frame) = atan2(Hcumulative(2,1), Hcumulative(1,1));
 %     outB = imwarp(imgB, affine2d(Hcumulative),'OutputView',imref2d(size(imgB)));      
 end;
 
-final_transH = DPSmoothPath(transH, n_frame);
+[final_transH, keyframe] = DPSmoothPath(transH, n_frame);
+
+T_axis = 1:n_frame;
+figure;
+plot(T_axis, detY(1:n_frame), keyframe, detY(keyframe))
+xlabel('frame')
+ylabel('Motion in y')
+
+figure;
+plot(T_axis, detA(1:n_frame), keyframe, detA(keyframe))
+xlabel('frame')
+ylabel('Motion in rotation')
+
+
 window_size = 30;
     
 reset(videoReader);
@@ -54,13 +64,16 @@ for i = 1:n_frame
 %     disp(transH{i});
     img = step(videoReader);
     out = imwarp(img, affine2d(final_transH{i}),'OutputView',imref2d(size(img)));
-%     out = padarray([out(startm:endm, startn:endn, :)], [startm, startn]);
-    out = out(1:m, 1:n, :);
-    out = insertText(out, [1 1], [i]);
+    origin_out = out;
+
     left = max(1, i - window_size / 2);
     right = min(n_frame, i + window_size / 2);
     out = padding(out, final_transH{i}, i - left + 1, transH(left:right), img_array(left:right));
-    writeVideo(outVideo, [img, out]);
+    out = padarray([out(startm:endm, startn:endn, :)], [startm, startn]);
+    out = insertText(out, [1 1], [i]);
+    out = out(1:m, 1:n, :);
+    
+    writeVideo(outVideo, [origin_out, out]);
 end;
         
 close(outVideo);
